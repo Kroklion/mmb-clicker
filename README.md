@@ -47,7 +47,7 @@
 ### For Blender 4.2+ Users
 
 1. **Download:**  
-   Download the repository as a ZIP file ([Code → Download ZIP](#)).
+   Download the repository as a ZIP file (Code → Download ZIP).
 
 2. **Install the Add-on:**  
    In Blender, navigate to:
