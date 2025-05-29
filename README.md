@@ -58,10 +58,12 @@
 
 This add-on has mainly been tested on Blender 4.2 and 4.4. It also works in Blender 3.6 and may be compatible with other older versions. To install:
 
-1. Extract the files from the repository/ZIP.
-2. Place the files into a subfolder named `mmb-clicker`.
-3. Zip the `mmb-clicker` folder.
-4. In Blender, use **Install from Disk** as described above and select the newly created ZIP file.
+1. **Download:**
+   As above
+2. **Install the Add-on:**  
+   In Blender, navigate to:
+   - **Edit > Preferences > Add-ons**
+   - Select **Install...** and point to the downloaded ZIP file.
 
 ## License
 
