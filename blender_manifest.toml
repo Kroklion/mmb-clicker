@@ -1,0 +1,15 @@
+schema_version = "1.0.0"
+
+id = "mmb_clicker"
+version = "0.5.0"
+name = "mmb-clicker"
+tagline = "Switch object interaction mode on middle mouse button double click"
+maintainer = "Kroklion <kroklion0@gmail.com>"
+type = "add-on"
+website = "https://github.com/Kroklion/mmb-clicker"
+
+tags = ["User Interface"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
