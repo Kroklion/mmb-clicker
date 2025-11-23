@@ -164,6 +164,8 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         ws_name = context.window.workspace.name
 
         # switch to object mode so we can determine what is under the mouse cursor by clicking
+        # in Edit mode it just selects other vertices and doesn't change the selection if nothing
+        # or another object is clicked
         if context.active_object:
             bpy.ops.object.mode_set(mode='OBJECT')
         selected_objects = list(context.selected_objects)  # shallow copy
@@ -350,7 +352,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                     # Blender code: void viewmove_apply(ViewOpsData *vod, int x, int y)
                     # TODO zfac etc. Difficult, this implementation here is good enough for now.
                     offset_x = (float(last_x - event.mouse_x) /
-                                float(area.width)) * 1.5 * rv3d.view_distance
+                                float(area.width)) * (area.width / area.height) * rv3d.view_distance
                     offset_y = (float(last_y - event.mouse_y) /
                                 float(area.height)) * 1.0 * rv3d.view_distance
 
