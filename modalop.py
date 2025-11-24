@@ -2,10 +2,9 @@ import bpy
 import time
 from bpy.types import Operator
 from mathutils import Vector
+from enum import Enum
 
 from . import log
-
-from enum import Enum
 
 IDNAME = 'wm.clicker_controlling'
 
@@ -58,20 +57,56 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
     bl_label = "Clicker Mode Control"
 
     # Mode switching section
-    mode_cycle_mesh = {'OBJECT': 'EDIT',
-                       'EDIT': 'WEIGHT_PAINT', 'WEIGHT_PAINT': 'EDIT'}
-    mode_cycle_mesh_no_wp = {'OBJECT': 'EDIT', 'EDIT': 'OBJECT'}
-    mode_cycle_arma = {'OBJECT': 'POSE', 'POSE': 'EDIT', 'EDIT': 'POSE'}
-    mode_cycle_curve = {'OBJECT': 'EDIT'}
+    mode_cycle_mesh = {
+        'OBJECT': 'EDIT',
+        'EDIT': 'WEIGHT_PAINT',
+        'WEIGHT_PAINT': 'EDIT'
+    }
+    mode_cycle_mesh_no_wp = {
+        'OBJECT': 'EDIT', 'EDIT': 'OBJECT'
+    }
+    mode_cycle_arma = {
+        'OBJECT': 'POSE',
+        'POSE': 'EDIT',
+        'EDIT': 'POSE'
+    }
+    mode_cycle_curve = {
+        'OBJECT': 'EDIT'
+    }
 
-    mode_cycle_mesh_sculpt = {'OBJECT': 'SCULPT',
-                              'SCULPT': 'EDIT', 'EDIT': 'SCULPT'}
-    mode_cycle_map_default = {'MESH': mode_cycle_mesh,
-                              'ARMATURE': mode_cycle_arma, 'CURVE': mode_cycle_curve}
-    mode_cycle_map_sculpt = {'MESH': mode_cycle_mesh_sculpt}
+    mode_cycle_map_default = {
+        'MESH': mode_cycle_mesh,
+        'ARMATURE': mode_cycle_arma,
+        'CURVE': mode_cycle_curve
+    }
 
-    workspaces = {'Sculpting': mode_cycle_map_sculpt,
-                  'DeFaUlT': mode_cycle_map_default}
+    mode_cycle_mesh_sculpt = {
+        'OBJECT': 'SCULPT',
+        'SCULPT': 'EDIT',
+        'EDIT': 'SCULPT'
+    }
+    mode_cycle_map_sculpt = {
+        'MESH': mode_cycle_mesh_sculpt,
+        'ARMATURE': mode_cycle_arma,
+        'CURVE': mode_cycle_curve
+    }
+
+    mode_cycle_mesh_texpaint = {
+        'OBJECT': 'TEXTURE_PAINT',
+        'TEXTURE_PAINT': 'VERTEX_PAINT',
+        'VERTEX_PAINT': 'TEXTURE_PAINT'
+    }
+    mode_cycle_map_texpaint = {
+        'MESH': mode_cycle_mesh_texpaint,
+        'ARMATURE': mode_cycle_arma,
+        'CURVE': mode_cycle_curve
+    }
+
+    workspaces = {
+        'SCULPT': mode_cycle_map_sculpt,
+        'TEXTURE_PAINT': mode_cycle_map_texpaint,
+        'DeFaUlT': mode_cycle_map_default
+    }
 
     def get_armature_from_mod(self, context, mesh_obj):
         for mod in mesh_obj.modifiers:
@@ -79,16 +114,18 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 return mod.object
 
     def switch_same_mode(self, context, current_mode, cycle_to_next=True):
-        cycle_map = self.workspaces.get(context.window.workspace.name)
+        cycle_map = self.workspaces.get(context.window.workspace.object_mode)
         if not cycle_map:
             cycle_map = self.workspaces.get('DeFaUlT')
+
+        log.debug(f"cycle map: {str(cycle_map)}")
 
         cycle = cycle_map.get(context.active_object.type)
         if cycle is None:
             return  # lamps etc.
         next = cycle.get(current_mode) if cycle_to_next else current_mode
 
-        log.debug(context.active_object.mode + ' -> ' + str(next))
+        log.debug(f"{current_mode} -> {next}")
 
         armature = None
 
@@ -99,9 +136,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 armature.select_set(True)
             else:
                 # no weightpainting, skip the step
-                # hardcode for now
-                next = 'OBJECT'
-                # next = cycle.get(next)
+                next = self.mode_cycle_mesh_no_wp.get(current_mode)
 
         if next is not None:
             bpy.ops.object.mode_set(mode=next)

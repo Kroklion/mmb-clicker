@@ -26,8 +26,10 @@
    - **Mesh:** Toggles between `EDIT` and `WEIGHT_PAINT` mode.
    - **Armature:** Toggles between `POSE` and `EDIT` mode.
    
-   **Note for Sculpting Workspace:**  
-   If your current workspace is named **"Sculpting"**, a Mesh will switch between `SCULPTING` and `EDIT` modes instead.
+   **Workspace Mode:**
+   Depending on the mode set in '3D View N panel -> Tool -> Workspace -> Mode' different cycles will be used: 
+   - **Sculpting:** A Mesh will switch between `SCULPTING` and `EDIT` modes.
+   - **Texture Paint:** A Mesh will switch between `TEXTURE_PAINT` and `VERTEX_PAINT` modes.
 
 2. **Switching Modes On Empty Space:**  
    Double-click the MMB while the mouse cursor is over empty space to switch to `OBJECT` mode.
