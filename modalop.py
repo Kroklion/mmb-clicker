@@ -1,7 +1,6 @@
 import bpy
 import time
 from bpy.types import Operator
-from mathutils import Vector
 from enum import Enum
 
 from . import log
@@ -35,20 +34,12 @@ class Keystate(Enum):
     DOWN1 = 2
     UP1 = 3
     DOWN2 = 4
-    ALTERN = 5
     
-key_state = Keystate.IDLE # member variable is not keeping a new value?????
 
+# Globals, because members in this special Operator class aren't kept.
+key_state = Keystate.IDLE
 last_click = 0
 last_x = last_y = 0
-
-view_perspective = ''
-is_perspective = True
-is_orthographic_side_view = False
-
-initial_view_matrix = None
-initial_location = None
-
 lastmode_per_workspace = {}
 
 
@@ -118,8 +109,6 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         if not cycle_map:
             cycle_map = self.workspaces.get('DeFaUlT')
 
-        log.debug(f"cycle map: {str(cycle_map)}")
-
         cycle = cycle_map.get(context.active_object.type)
         if cycle is None:
             return  # lamps etc.
@@ -140,6 +129,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
         if next is not None:
             bpy.ops.object.mode_set(mode=next)
+
         # sync heatmap displayed (active vertex group) with selected bone
         if armature and next == 'WEIGHT_PAINT' and context.active_pose_bone:
             name = context.active_pose_bone.name
@@ -161,27 +151,9 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
     ''' perform a scripted click at mouse position (from event) in the given area '''
 
-    def click_in_3d_view(self, context, area, event):
-        global view_perspective
-        global is_orthographic_side_view
-        global is_perspective
-
-        # restore perspective
-        if area is not None and len(area.spaces) > 0:
-            log.debug("perspective restore " + str(view_perspective))
-            area.spaces[0].region_3d.view_perspective = view_perspective
-            area.spaces[0].region_3d.is_perspective = is_perspective
-            area.spaces[0].region_3d.is_orthographic_side_view = is_orthographic_side_view
-        
-        # trigger the click
-        with context.temp_override(
-                window=context.window,
-                area=area,
-                region=[
-                    region for region in area.regions if region.type == 'WINDOW'][0],
-                screen=context.window.screen):
-            bpy.ops.view3d.select(
-                location=(event.mouse_x - area.x, event.mouse_y - area.y))
+    def click_in_3d_view(self, area, event):
+        bpy.ops.view3d.select(
+            location=(event.mouse_x - area.x, event.mouse_y - area.y), deselect_all=True)
 
     def get_clicked_area(self, context, event):
         for area in context.screen.areas:
@@ -207,12 +179,8 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
         if context.active_object:
             current_ob_type = context.active_object.type
-            # wtf, it's still selected after clicking nothing - need to deselect everything
-            context.view_layer.objects.active.select_set(False)
-        for obj in context.selected_objects:
-            obj.select_set(False)
 
-        self.click_in_3d_view(context, area, event)
+        self.click_in_3d_view(area, event)
 
         new_ob_type = None
         if len(context.selected_objects) == 0:  # nothing under the click
@@ -228,7 +196,6 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         # restore additional selected objects if one of them was the new target
         if new_ob in selected_objects:
             for obj in selected_objects:
-                # TODO deselect armature after weightpaint
                 obj.select_set(True)
 
         # clicked on nothing - select last selected in object mode
@@ -281,20 +248,22 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
             lastmode_per_workspace[ws_name] |= {
                 context.active_object.type: context.active_object.mode}
 
-    # https://docs.blender.org/api/current/bpy.types.Event.html
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
-        if (context is None) or (event is None) or (not context is None and context.region is None):
+        if context is None or event is None or context.region is None:
             return {'PASS_THROUGH'}
         
         global key_state
         global last_x, last_y, last_click
-        global initial_location, initial_view_matrix, window_matrix
         
         current = time.time()
 
         # logging purpose
         key_state_prev = key_state
+
+        move_distance_exceeded = abs(
+            event.mouse_x - last_x) > 10 or abs(event.mouse_y - last_y) > 10
+        time_exceeded = (current - last_click) > 0.5
 
         if key_state == Keystate.IDLE:
             if event.type == 'MIDDLEMOUSE' and event.value == 'PRESS':
@@ -304,54 +273,50 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 last_x = event.mouse_x
                 last_y = event.mouse_y
 
-                # save perspective state as it gets changed by middle mouse click
                 area = self.get_clicked_area(context, event)
-                if area is not None and len(area.spaces) > 0:
-                    global view_perspective, is_perspective, is_orthographic_side_view
-                    
-                    rv3d = area.spaces[0].region_3d
-                    view_perspective = rv3d.view_perspective
-                    is_perspective = rv3d.is_perspective
-                    is_orthographic_side_view = rv3d.is_orthographic_side_view
-                    # For alternate move function
-                    initial_location = rv3d.view_location.copy()
-                    initial_view_matrix = rv3d.view_matrix.copy()
-                    window_matrix = rv3d.window_matrix.copy()
+
+                # swallow the keydown
+                log.debug(str(key_state_prev) + " << " + event.type +
+                          "/" + event.value + " -> " + str(key_state))
+                return {'RUNNING_MODAL'}
 
         elif key_state == Keystate.DOWN1:
-            if (event.type == 'MIDDLEMOUSE' and event.value == 'RELEASE') or event.type == 'MOUSEMOVE':
-                if (current - last_click) < 0.5:
-                    if abs(event.mouse_x - last_x) > 10 or abs(event.mouse_y - last_y) > 10:
-                        log.debug("mouse moved too much, resetting.")
-                        key_state = Keystate.IDLE
-                    else:
-                        key_state = Keystate.UP1
-                        last_click = current
+            if event.type == 'MIDDLEMOUSE' and event.value == 'RELEASE':
+                if time_exceeded or move_distance_exceeded:
+                    key_state = Keystate.IDLE
                 else:
+                    key_state = Keystate.UP1
+                    last_click = current
+
+            elif event.type == 'MOUSEMOVE':
+                if time_exceeded or move_distance_exceeded:
+                    log.debug(
+                        "DOWN1: mouse/time moved too much, handing over to rotate.")
+                    bpy.ops.view3d.rotate('INVOKE_DEFAULT')
                     key_state = Keystate.IDLE
 
         elif key_state == Keystate.UP1:
             if event.type == 'MIDDLEMOUSE' and event.value == 'PRESS':
                 if event.shift or event.ctrl or event.alt or event.oskey:  # Ignore
                     key_state = Keystate.IDLE
-                elif (current - last_click) < 0.5:
+                elif not time_exceeded:
                     key_state = Keystate.DOWN2
                 else:
+                    bpy.ops.view3d.rotate('INVOKE_DEFAULT')
                     key_state = Keystate.IDLE
-            if not (current - last_click) < 0.5:
-                key_state = Keystate.IDLE
-            if abs(event.mouse_x - last_x) > 10 or abs(event.mouse_y - last_y) > 10:
-                log.debug("mouse moved too much, resetting.")
+            if time_exceeded or move_distance_exceeded:
+                log.debug("UP1: mouse/time moved too much, resetting.")
                 key_state = Keystate.IDLE
 
         elif key_state == Keystate.DOWN2:
             if event.type == 'MIDDLEMOUSE' and event.value == 'RELEASE':
                 if event.shift or event.ctrl or event.alt or event.oskey:  # Ignore
                     key_state = Keystate.IDLE
-                elif (current - last_click) < 0.5:
-                    # moved while doubleclicking
-                    if abs(event.mouse_x - last_x) > 10 or abs(event.mouse_y - last_y) > 10:
-                        log.debug("mouse moved too much, resetting.")
+                elif not time_exceeded:
+                    if move_distance_exceeded:
+                        log.debug(
+                            "mouse moved too much, handing over to rotate.")
+                        bpy.ops.view3d.rotate('INVOKE_DEFAULT')
                         key_state = Keystate.IDLE
                     else:
                         area = self.get_clicked_area(context, event)
@@ -361,43 +326,17 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 else:
                     key_state = Keystate.IDLE
             elif event.type == 'MOUSEMOVE':
-                if abs(event.mouse_x - last_x) > 10 or abs(event.mouse_y - last_y) > 10:
+                if move_distance_exceeded:
                     log.debug('BeginDrag')
-                    key_state = Keystate.ALTERN
+                    bpy.ops.view3d.move('INVOKE_DEFAULT')
+                    key_state = Keystate.IDLE
 
             elif event.type == 'WINDOW_DEACTIVATE':
                 key_state = Keystate.IDLE
 
-        elif key_state == Keystate.ALTERN:
-            if event.type == 'MIDDLEMOUSE' and event.value == 'RELEASE':
-                key_state = Keystate.IDLE
-            elif event.type == 'MOUSEMOVE':
-                # move the viewport
-
-                area = self.get_clicked_area(context, event)
-                if area is not None and len(area.spaces) > 0:
-                    rv3d = area.spaces[0].region_3d
-
-                    # reset perspective
-                    rv3d.view_perspective = view_perspective
-                    rv3d.is_perspective = is_perspective
-                    rv3d.is_orthographic_side_view = is_orthographic_side_view
-
-                    # move view
-                    # Blender code: void viewmove_apply(ViewOpsData *vod, int x, int y)
-                    # TODO zfac etc. Difficult, this implementation here is good enough for now.
-                    offset_x = (float(last_x - event.mouse_x) /
-                                float(area.width)) * (area.width / area.height) * rv3d.view_distance
-                    offset_y = (float(last_y - event.mouse_y) /
-                                float(area.height)) * 1.0 * rv3d.view_distance
-
-                    offset = Vector((offset_x, offset_y, 0.0))
-                    offset.rotate(rv3d.view_rotation)
-                    rv3d.view_location = initial_location + offset
-
         log.debug(str(key_state_prev) + " << " + event.type + "/" + event.value + " -> " + str(key_state))
         
-        if key_state == Keystate.DOWN2 or key_state == Keystate.ALTERN:
+        if key_state == Keystate.DOWN2:
             return {'RUNNING_MODAL'}
 
         return {'PASS_THROUGH'}

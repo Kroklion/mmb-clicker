@@ -39,11 +39,6 @@
    - **Click** the MMB and immediately **release**.
    - Then **click and hold** the MMB before dragging your mouse.
    
-## Limitations
-
-- **Orthographic Mode Flicker:**  
-  When in orthographic mode, these actions may cause a brief flicker as Blender temporarily switches to perspective mode. Known issue, probably no solution.
-
 ## Installation
 
 ### For Blender 4.2+ Users
