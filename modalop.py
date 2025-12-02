@@ -180,6 +180,11 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         if context.active_object:
             current_ob_type = context.active_object.type
 
+        # Deselect everything because otherwise Blender does its toggling thing
+        context.view_layer.objects.active.select_set(False)
+        for obj in context.selected_objects:
+            obj.select_set(False)
+
         self.click_in_3d_view(area, event)
 
         new_ob_type = None
