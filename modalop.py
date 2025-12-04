@@ -54,7 +54,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         'WEIGHT_PAINT': 'EDIT'
     }
     mode_cycle_mesh_no_wp = {
-        'OBJECT': 'EDIT', 'EDIT': 'OBJECT'
+        'OBJECT': 'EDIT', 'EDIT': 'OBJECT', 'WEIGHT_PAINT': 'EDIT'
     }
     mode_cycle_arma = {
         'OBJECT': 'POSE',
