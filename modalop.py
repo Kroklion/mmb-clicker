@@ -104,7 +104,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
             if mod.type == 'ARMATURE':
                 return mod.object
 
-    def switch_same_mode(self, context, current_mode, cycle_to_next=True):
+    def switch_same_mode(self, context, current_mode, cycle_to_next=True, force_armature_remove=False):
         cycle_map = self.workspaces.get(context.window.workspace.object_mode)
         if not cycle_map:
             cycle_map = self.workspaces.get('DeFaUlT')
@@ -114,7 +114,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
             return  # lamps etc.
         next = cycle.get(current_mode) if cycle_to_next else current_mode
 
-        log.debug(f"{current_mode} -> {next}")
+        log.info(f"{current_mode} -> {next}")
 
         armature = None
 
@@ -125,6 +125,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 armature.select_set(True)
             else:
                 # no weightpainting, skip the step
+                log.info("Armature not found")
                 next = self.mode_cycle_mesh_no_wp.get(current_mode)
 
         if next is not None:
@@ -142,18 +143,17 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                         break
         
         # deselect armature after weight paint
-        if current_mode == 'WEIGHT_PAINT':
+        if force_armature_remove or (current_mode == 'WEIGHT_PAINT' and next != 'WEIGHT_PAINT'):
             armature = self.get_armature_from_mod(
                 context, context.active_object)
             if armature:
                 armature.select_set(False)
 
-
     ''' perform a scripted click at mouse position (from event) in the given area '''
 
     def click_in_3d_view(self, area, event):
         bpy.ops.view3d.select(
-            location=(event.mouse_x - area.x, event.mouse_y - area.y), deselect_all=True)
+            location=(event.mouse_x - area.x, event.mouse_y - area.y), deselect_all=True, object=True)
 
     def get_clicked_area(self, context, event):
         for area in context.screen.areas:
@@ -166,19 +166,22 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         global lastmode_per_workspace
         
         current_mode = context.active_object.mode if context.active_object else None
-        current_ob_type = None
-        current_ob = context.active_object
+        current_ob = context.active_object if len(
+            context.selected_objects) != 0 else None
+
         ws_name = context.window.workspace.name
 
-        # switch to object mode so we can determine what is under the mouse cursor by clicking
-        # in Edit mode it just selects other vertices and doesn't change the selection if nothing
-        # or another object is clicked
-        if context.active_object:
-            bpy.ops.object.mode_set(mode='OBJECT')
-        selected_objects = list(context.selected_objects)  # shallow copy
+        log.info(
+            f"Current: {current_ob.name if current_ob is not None else None}, " +
+            f"type {current_ob.type if current_ob is not None else None}, mode {current_mode}")
 
-        if context.active_object:
-            current_ob_type = context.active_object.type
+        # switch to object mode if not in Edit mode, at least in pose mode the click doesn't work otherwise
+        if context.active_object and context.active_object.mode != 'EDIT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        selected_objects = list(context.selected_objects)  # shallow copy
+        log.info(f"Initially selected: {selected_objects}")
+
 
         # Deselect everything because otherwise Blender does its toggling thing
         context.view_layer.objects.active.select_set(False)
@@ -187,71 +190,94 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
         self.click_in_3d_view(area, event)
 
-        new_ob_type = None
-        if len(context.selected_objects) == 0:  # nothing under the click
-            new_ob = None
-        else:
-            new_ob = context.active_object
-            if context.active_object:
-                new_ob_type = context.active_object.type
+        log.info(f"Selected after click: {context.selected_objects}")
 
-        if context.active_object:
-            new_ob_type = context.active_object.type
+        log.info(
+            f"Clicked: {context.selected_objects[0].name if len(context.selected_objects) > 0 else None}, " +
+            f"type {context.selected_objects[0].type if len(context.selected_objects) > 0 else None}")
+
+        new_ob = context.selected_objects[0] if len(
+            context.selected_objects) > 0 else None
+
+        bpy.ops.object.mode_set(mode='OBJECT')
 
         # restore additional selected objects if one of them was the new target
-        if new_ob in selected_objects:
+        if (new_ob in selected_objects or new_ob is None) and len(selected_objects) > 1:
             for obj in selected_objects:
                 obj.select_set(True)
 
         # clicked on nothing - select last selected in object mode
-        # (we already are in object mode at this point)
         if new_ob is None:
-            log.debug((current_mode if current_mode is not None else 'None') + ' -> ' + 'OBJECT')
+            log.info("New ob is None, switch to Object mode")
+
             if current_ob is not None:
                 current_ob.select_set(True)
-                for obj in selected_objects:  # re-select additional objects
-                    obj.select_set(True)
-                    
-                # deselect armature after weight paint
-                # duplicated code
-                if current_mode == 'WEIGHT_PAINT':
-                    armature = self.get_armature_from_mod(
-                        context, context.active_object)
-                    if armature:
-                        armature.select_set(False)
 
-        # clicked on selected, switch mode
-        elif new_ob == current_ob:
-            self.switch_same_mode(context, current_mode)
+                context.view_layer.objects.active = current_ob
+                self.switch_same_mode(context, 'OBJECT', cycle_to_next=False,
+                                      force_armature_remove=current_mode == 'WEIGHT_PAINT')
 
-        # clicked on other object of same type, enter same mode
-        elif current_ob_type == new_ob_type:
-            log.debug("Current and new object types are same: " + str(current_ob_type))
-            target_mode = current_mode
+        # from None to an object, restore last saved mode
+        elif current_ob is None:
+            log.info(f"Previously None selected, restore from last mode")
+            context.view_layer.objects.active = new_ob
 
-            if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
-                target_mode = lastmode_per_workspace[ws_name].get(
-                    new_ob.type)
-                self.switch_same_mode(
-                    context, target_mode, cycle_to_next=False)
-            else:
-                self.switch_same_mode(context, target_mode)
-
-        # different object - enter last known mode
-        else:
-            log.debug("Other object type: " + str(current_ob_type) + ' -> ' + str(new_ob_type))
             if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
                 next = lastmode_per_workspace[ws_name].get(new_ob.type)
                 self.switch_same_mode(context, next, cycle_to_next=False)
             else:
-                new_ob.select_set(True)
+                self.switch_same_mode(context, 'OBJECT')
+
+        # clicked on selected, switch mode
+        elif new_ob == current_ob:
+            log.info(f"Clicked on same object, cycle mode")
+            context.view_layer.objects.active = new_ob
+            new_ob.select_set(True)
+
+            if current_mode == 'OBJECT':
+                if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
+                    next = lastmode_per_workspace[ws_name].get(new_ob.type)
+                    log.info(f"Switch to mode: {next}")
+                    self.switch_same_mode(context, next, cycle_to_next=False)
+                else:
+                    self.switch_same_mode(context, current_mode)
+            else:
+                self.switch_same_mode(context, current_mode)
+
+        # clicked on other object of same type, enter same mode
+        elif current_ob.type == new_ob.type:
+            log.info(
+                f"Different object but same type, select with same mode")
+            context.view_layer.objects.active = new_ob
+
+            if current_mode == 'OBJECT':
+                if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
+                    next = lastmode_per_workspace[ws_name].get(new_ob.type)
+                    log.info(f"Switch to mode: {next}")
+                    self.switch_same_mode(context, next, cycle_to_next=False)
+                else:
+                    self.switch_same_mode(context, current_mode)
+            else:
+                self.switch_same_mode(context, current_mode,
+                                      cycle_to_next=current_mode == 'OBJECT')
+
+        # different object - enter last known mode
+        else:
+            log.info(
+                f"Clicked on other object type, switch according to its last mode")
+            context.view_layer.objects.active = new_ob
+
+            if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
+                next = lastmode_per_workspace[ws_name].get(new_ob.type)
+                log.info(f"Switch to mode: {next}")
+                self.switch_same_mode(context, next, cycle_to_next=False)
+            else:
+                self.switch_same_mode(context, 'OBJECT')
 
         # store last mode depending on workspace
         if context.active_object and context.active_object.mode != 'OBJECT':
-            if ws_name not in lastmode_per_workspace:
-                lastmode_per_workspace[ws_name] = {}
-            lastmode_per_workspace[ws_name] |= {
-                context.active_object.type: context.active_object.mode}
+            lastmode_per_workspace.setdefault(
+                ws_name, {})[context.active_object.type] = context.active_object.mode
 
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
