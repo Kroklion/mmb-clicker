@@ -41,7 +41,6 @@ class Keystate(Enum):
 key_state = Keystate.IDLE
 last_click = 0
 last_x = last_y = 0
-lastmode_per_workspace = {}
 
 
 class EVENTKEYMAP_OT_Clicker_Addon(Operator):
@@ -202,6 +201,17 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
         bpy.ops.object.mode_set(mode='OBJECT')
 
+        ws = context.window.workspace
+        LASTMODE_PROP = 'clicker_last_modes'
+        # Ensure the last mode workspace property exists
+        if LASTMODE_PROP not in ws:
+            ws[LASTMODE_PROP] = {}
+
+        next = ws[LASTMODE_PROP].get(
+            new_ob.type) if new_ob is not None else None
+        log.info(f"LastMode: {next}")
+
+
         # restore additional selected objects if one of them was the new target
         if (new_ob in selected_objects or new_ob is None) and len(selected_objects) > 1:
             for obj in selected_objects:
@@ -223,8 +233,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
             log.info(f"Previously None selected, restore from last mode")
             context.view_layer.objects.active = new_ob
 
-            if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
-                next = lastmode_per_workspace[ws_name].get(new_ob.type)
+            if next:
                 self.switch_same_mode(context, next, cycle_to_next=False)
             else:
                 self.switch_same_mode(context, 'OBJECT')
@@ -236,8 +245,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
             new_ob.select_set(True)
 
             if current_mode == 'OBJECT':
-                if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
-                    next = lastmode_per_workspace[ws_name].get(new_ob.type)
+                if next:
                     log.info(f"Switch to mode: {next}")
                     self.switch_same_mode(context, next, cycle_to_next=False)
                 else:
@@ -252,8 +260,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
             context.view_layer.objects.active = new_ob
 
             if current_mode == 'OBJECT':
-                if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
-                    next = lastmode_per_workspace[ws_name].get(new_ob.type)
+                if next:
                     log.info(f"Switch to mode: {next}")
                     self.switch_same_mode(context, next, cycle_to_next=False)
                 else:
@@ -268,8 +275,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 f"Clicked on other object type, switch according to its last mode")
             context.view_layer.objects.active = new_ob
 
-            if ws_name in lastmode_per_workspace and new_ob.type in lastmode_per_workspace[ws_name]:
-                next = lastmode_per_workspace[ws_name].get(new_ob.type)
+            if next:
                 log.info(f"Switch to mode: {next}")
                 self.switch_same_mode(context, next, cycle_to_next=False)
             else:
@@ -277,8 +283,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
         # store last mode depending on workspace
         if context.active_object and context.active_object.mode != 'OBJECT':
-            lastmode_per_workspace.setdefault(
-                ws_name, {})[context.active_object.type] = context.active_object.mode
+            ws[LASTMODE_PROP][context.active_object.type] = context.active_object.mode
 
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event):
