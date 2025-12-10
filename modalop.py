@@ -312,7 +312,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 area = self.get_clicked_area(context, event)
 
                 # swallow the keydown
-                log.debug(str(key_state_prev) + " << " + event.type +
+                log.info(str(key_state_prev) + " << " + event.type +
                           "/" + event.value + " -> " + str(key_state))
                 return {'RUNNING_MODAL'}
 
@@ -326,14 +326,14 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
             elif event.type == 'MOUSEMOVE':
                 if time_exceeded or move_distance_exceeded:
-                    log.debug(
+                    log.info(
                         "DOWN1: mouse/time moved too much, handing over to rotate.")
                     bpy.ops.view3d.rotate('INVOKE_DEFAULT')
                     key_state = Keystate.IDLE
 
         elif key_state == Keystate.UP1:
             if time_exceeded or move_distance_exceeded:
-                log.debug("UP1: mouse/time moved too much, resetting.")
+                log.info("UP1: mouse/time moved too much, resetting.")
                 key_state = Keystate.IDLE
             elif event.type == 'MIDDLEMOUSE' and event.value == 'PRESS':
                 if event.shift or event.ctrl or event.alt or event.oskey:  # Ignore
@@ -350,7 +350,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                     key_state = Keystate.IDLE
                 elif not time_exceeded:
                     if move_distance_exceeded:
-                        log.debug(
+                        log.info(
                             "mouse moved too much, handing over to rotate.")
                         bpy.ops.view3d.rotate('INVOKE_DEFAULT')
                         key_state = Keystate.IDLE
@@ -363,7 +363,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                     key_state = Keystate.IDLE
             elif event.type == 'MOUSEMOVE':
                 if move_distance_exceeded:
-                    log.debug('BeginDrag')
+                    log.info('BeginDrag')
                     bpy.ops.view3d.move('INVOKE_DEFAULT')
                     key_state = Keystate.IDLE
 
