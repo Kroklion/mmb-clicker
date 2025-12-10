@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "mmb_clicker"
-version = "0.6.0"
+version = "0.7.0"
 name = "mmb-clicker"
 tagline = "Switch object interaction mode on middle mouse button double click"
 maintainer = "Kroklion <kroklion0@gmail.com>"

@@ -25,7 +25,7 @@ Legacy Addon Info
 bl_info = {
     "name": "mmb-clicker",
     "author": "Kroklion",
-    "version": (0, 6),
+    "version": (0, 7),
     "blender": (3, 6, 0),
     "location": "Preferences > Add-ons > mmb-clicker",
     "description": "Switch object interaction mode on middle mouse button double click",
