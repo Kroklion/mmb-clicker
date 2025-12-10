@@ -332,7 +332,10 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                     key_state = Keystate.IDLE
 
         elif key_state == Keystate.UP1:
-            if event.type == 'MIDDLEMOUSE' and event.value == 'PRESS':
+            if time_exceeded or move_distance_exceeded:
+                log.debug("UP1: mouse/time moved too much, resetting.")
+                key_state = Keystate.IDLE
+            elif event.type == 'MIDDLEMOUSE' and event.value == 'PRESS':
                 if event.shift or event.ctrl or event.alt or event.oskey:  # Ignore
                     key_state = Keystate.IDLE
                 elif not time_exceeded:
@@ -340,9 +343,6 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                 else:
                     bpy.ops.view3d.rotate('INVOKE_DEFAULT')
                     key_state = Keystate.IDLE
-            if time_exceeded or move_distance_exceeded:
-                log.debug("UP1: mouse/time moved too much, resetting.")
-                key_state = Keystate.IDLE
 
         elif key_state == Keystate.DOWN2:
             if event.type == 'MIDDLEMOUSE' and event.value == 'RELEASE':
