@@ -1,9 +1,15 @@
 import bpy
-from bpy.types import Operator, AddonPreferences
+from bpy.types import AddonPreferences
+
+from bpy.props import (
+    IntProperty,
+    FloatProperty
+)
 
 from . import log
 
-def updateInner(self, variable_name):
+
+def property_updated(self, variable_name):
     if variable_name in ClickerPreferences.callbacks:
         for callback in ClickerPreferences.callbacks.get(variable_name, []):
             callback(getattr(self, variable_name))
@@ -11,9 +17,6 @@ def updateInner(self, variable_name):
         log.warning("No callback set for: " + variable_name)
     pass
 
-def updateLogLevel(self, context):
-    updateInner(self, 'debug_level')
-    
 class ClickerPreferences(AddonPreferences):
     bl_idname = __package__
     
@@ -27,7 +30,23 @@ class ClickerPreferences(AddonPreferences):
             ('INFO', 'Info', ''),
             ('DEBUG', 'Debug', '')
         ],
-        update=updateLogLevel
+        update=lambda self, ctx: property_updated(self, 'debug_level')
+    )
+
+    click_detection_time: FloatProperty(
+        name="Click Timeout",
+        description="Double click detection time",
+        default=0.5,
+        min=0.1,
+        soft_max=5
+    )
+
+    drag_detection_px: IntProperty(
+        name="Drag Detection",
+        description="Move tolerance in pixels during click",
+        default=10,
+        min=0,
+        soft_max=50
     )
     
     @staticmethod
@@ -62,4 +81,6 @@ class ClickerPreferences(AddonPreferences):
 
     def draw(self, context: bpy.types.Context):
         layout: bpy.types.UILayout = self.layout
+        layout.prop(self, 'click_detection_time')
+        layout.prop(self, 'drag_detection_px')
         layout.prop(self, 'debug_level')

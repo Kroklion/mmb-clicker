@@ -4,6 +4,7 @@ from bpy.types import Operator
 from enum import Enum
 
 from . import log
+from .uisettings import ClickerPreferences
 
 IDNAME = 'wm.clicker_controlling'
 
@@ -292,9 +293,13 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         # logging purpose
         key_state_prev = key_state
 
+        click_time = ClickerPreferences.get_instance(
+            context).click_detection_time
+        pixels = ClickerPreferences.get_instance(context).drag_detection_px
+
         move_distance_exceeded = abs(
-            event.mouse_x - last_x) > 10 or abs(event.mouse_y - last_y) > 10
-        time_exceeded = (current - last_click) > 0.5
+            event.mouse_x - last_x) > pixels or abs(event.mouse_y - last_y) > pixels
+        time_exceeded = (current - last_click) > click_time
 
         if key_state == Keystate.IDLE:
             if event.type == 'MIDDLEMOUSE' and event.value == 'PRESS':
