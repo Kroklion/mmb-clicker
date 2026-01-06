@@ -199,7 +199,8 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         new_ob = context.selected_objects[0] if len(
             context.selected_objects) > 0 else None
 
-        bpy.ops.object.mode_set(mode='OBJECT')
+        if context.active_object and context.active_object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
 
         ws = context.window.workspace
         LASTMODE_PROP = 'clicker_last_modes'
