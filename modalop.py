@@ -184,7 +184,9 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
 
 
         # Deselect everything because otherwise Blender does its toggling thing
-        context.view_layer.objects.active.select_set(False)
+        if context.view_layer.objects.active:
+            context.view_layer.objects.active.select_set(False)
+        
         for obj in context.selected_objects:
             obj.select_set(False)
 
@@ -222,7 +224,7 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
         if new_ob is None:
             log.info("New ob is None, switch to Object mode")
 
-            if current_ob is not None:
+            if current_ob is not None and not current_ob.hide_get():
                 current_ob.select_set(True)
 
                 context.view_layer.objects.active = current_ob
@@ -362,9 +364,9 @@ class EVENTKEYMAP_OT_Clicker_Addon(Operator):
                         key_state = Keystate.IDLE
                     else:
                         area = self.get_clicked_area(context, event)
+                        key_state = Keystate.IDLE
                         if area is not None:
                             self.handle_3d_view_click(context, event, area)
-                        key_state = Keystate.IDLE
                 else:
                     key_state = Keystate.IDLE
             elif event.type == 'MOUSEMOVE':
