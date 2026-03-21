@@ -14,6 +14,7 @@ import bpy
 
 from .modalop import EVENTKEYMAP_OT_Clicker_Addon, keymap_initialize, keymap_remove
 from .uisettings import ClickerPreferences
+from .switchop import OT_Clicker_Modeswitch
 from . import log
 
 ADDON_NAME = __package__.split('.')[-1]
@@ -39,6 +40,7 @@ bl_info = {
 classes = (
     ClickerPreferences,
     EVENTKEYMAP_OT_Clicker_Addon,
+    OT_Clicker_Modeswitch
 )
 
 class_register, class_unregister = bpy.utils.register_classes_factory(classes)
