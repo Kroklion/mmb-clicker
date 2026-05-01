@@ -139,13 +139,9 @@ class OT_Clicker_Modeswitch(Operator):
                     return area
 
     def handle_3d_view_click(self, context, mouse_x: int, mouse_y: int, area):
-        global lastmode_per_workspace
-
         current_mode = context.active_object.mode if context.active_object else None
         current_ob = context.active_object if len(
             context.selected_objects) != 0 else None
-
-        ws_name = context.window.workspace.name
 
         log.info(
             f"Current: {current_ob.name if current_ob is not None else None}, " +
