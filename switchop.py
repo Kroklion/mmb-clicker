@@ -41,10 +41,15 @@ class OT_Clicker_Modeswitch(Operator):
         'OBJECT': 'EDIT'
     }
 
+    mode_cycle_lattice = {
+        'OBJECT': 'EDIT'
+    }
+
     mode_cycle_map_default = {
         'MESH': mode_cycle_mesh,
         'ARMATURE': mode_cycle_arma,
-        'CURVE': mode_cycle_curve
+        'CURVE': mode_cycle_curve,
+        'LATTICE': mode_cycle_lattice
     }
 
     mode_cycle_mesh_sculpt = {
@@ -55,7 +60,8 @@ class OT_Clicker_Modeswitch(Operator):
     mode_cycle_map_sculpt = {
         'MESH': mode_cycle_mesh_sculpt,
         'ARMATURE': mode_cycle_arma,
-        'CURVE': mode_cycle_curve
+        'CURVE': mode_cycle_curve,
+        'LATTICE': mode_cycle_lattice
     }
 
     mode_cycle_mesh_texpaint = {
@@ -66,7 +72,8 @@ class OT_Clicker_Modeswitch(Operator):
     mode_cycle_map_texpaint = {
         'MESH': mode_cycle_mesh_texpaint,
         'ARMATURE': mode_cycle_arma,
-        'CURVE': mode_cycle_curve
+        'CURVE': mode_cycle_curve,
+        'LATTICE': mode_cycle_lattice
     }
 
     workspaces = {
