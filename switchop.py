@@ -180,8 +180,21 @@ class OT_Clicker_Modeswitch(Operator):
             f"Clicked: {context.selected_objects[0].name if len(context.selected_objects) > 0 else None}, " +
             f"type {context.selected_objects[0].type if len(context.selected_objects) > 0 else None}")
 
-        new_ob = context.selected_objects[0] if len(
-            context.selected_objects) > 0 else None
+        new_ob = None
+
+        if current_mode == 'OBJECT' and current_ob is not None and current_ob != context.active_object:
+            # prefer the currently selected for switching
+            # click on the same spot 5 times and see if the active object at entry is among them
+            # may not work if more than 5 overlapping objects
+            for _ in range(5):
+                self.click_in_3d_view(area, mouse_x, mouse_y)
+                if current_ob == context.active_object:
+                    new_ob = current_ob
+                    break
+
+        if new_ob is None:
+            new_ob = context.selected_objects[0] if len(
+                context.selected_objects) > 0 else None
 
         if context.active_object and context.active_object.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
